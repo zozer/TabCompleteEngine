@@ -1,0 +1,52 @@
+TabComplete:
+  type: procedure
+  debug: false
+  definitions: command|data|raw_args
+  script:
+    - define raw_args <[raw_args].if_null[<empty>]>
+    - define newArg '<[raw_args].ends_with[ ].or[<[raw_args].equals[<empty>]>]>'
+    - define path <[command]>
+    - define script <script[<[data]>]>
+    - define args <list>
+    - if <[raw_args]> != <empty>:
+      - define 'args:|:<[raw_args].split[ ]>'
+    - define argsSize <[args].size>
+    - if <[newArg]>:
+      - define argsSize:+:1
+    - repeat <[argsSize].sub[1]> as:index:
+      - define value <[args].get[<[index]>]>
+      - if <[value]> == <empty>:
+        - foreach next
+      - define keys <[script].list_keys[<[path]>]>
+      - define permLockedKeys <[keys].filter[starts_with[?]]>
+      - define keys:<-:<[permLockedKeys]>
+      - if <[keys].contains[<[value]>]>:
+        - define path <[path]>.<[value]>
+      - else:
+        - if <[permLockedKeys].size> > 0:
+          - define perm '<[permLockedKeys].filter[ends_with[ <[value]>]]>'
+          - if !<[perm].is_empty> && '<player.has_permission[<[perm].first.after[?].before[ ]>]>':
+            - define path <[path]>.<[perm].first>
+            - repeat next
+        - define default <[keys].filter[starts_with[_]]>
+        - if <[default].is_empty>:
+          - determine <list>
+        - define path <[path]>.<[default].first>
+      - if <[script].data_key[<[path]>]> == end:
+        - determine <list>
+    - foreach <[script].list_keys[<[path]>]>:
+      - if <[value].starts_with[_]>:
+        - define value <[value].after[_]>
+        - if <[value].starts_with[*]>:
+          - define ret:|:<proc[<[data]>_<[value].after[*]>].context[<[args]>]>
+      - else if <[value].starts_with[?]>:
+        - define perm '<[value].before[ ].after[?]>'
+        - if <player.has_permission[<[perm]>]>:
+          - define 'ret:|:<[value].after[ ]>'
+      - else:
+        - define ret:->:<[value]>
+    - if !<[ret].exists>:
+      - determine <list>
+    - if <[newArg]>:
+      - determine <[ret]>
+    - determine <[ret].filter[starts_with[<[args].last>]]>
